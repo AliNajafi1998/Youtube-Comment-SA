@@ -1,0 +1,3 @@
+[submodule "NLPKickStart"]
+	path = NLPKickStart
+	url = git@github.com:AliNajafi1998/NLPKickStart.git
