@@ -1,15 +1,12 @@
 # https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment?text=Like+I+care+about+you
 
 import pandas as pd
-import numpy as np
 import os
 from tqdm import tqdm
 
 from transformers import AutoModelForSequenceClassification
 from transformers import AutoTokenizer
 import torch
-import spacy
-from scipy.special import softmax
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -54,21 +51,42 @@ def get_chunks(token_ids, window_size=510, stride=211):
     return text_chunks
 
 
-# load the texts
 for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
-    for file_name in files:
+    for file_name in tqdm(files):
 
         if file_name.endswith("_cleaned.tsv"):
-            # segment it
+
+            # load the texts
             df = pd.read_csv(root + '//' + file_name, sep="\t")
             df = df[df['clean_comments'].isna() == False]
+            df.reset_index(drop=True, inplace=True)
             comments = df['clean_comments'].tolist()
+            predictions = []
             for c in comments:
+                # encoding the texts
                 input_ids = tokenizer.encode(c, return_tensors='pt', add_special_tokens=False)[0]
 
+                # windowing
                 chunks = get_chunks(input_ids)
 
-                # for chunk in chunks:
-                #     output = model(chunk)
-                #     scores = output[0][0].detach().numpy()
-                #     scores = softmax(scores)
+                # preparing batch
+                chunks = torch.concat(chunks, axis=0).to(device)
+
+                # batch predicting
+                output = model(chunks)[0].detach()
+
+                # softmax scores
+                batch_scores = torch.softmax(output[0], dim=-1)
+
+                # mean probabilities
+                scores = torch.mean(batch_scores, dim=0)
+
+                # Labels: 0 -> Negative; 1 -> Neutral; 2 -> Positive
+                pred = torch.argmax(scores).item()
+                predictions.append(pred)
+
+            df["predicted_label"] = predictions
+
+            # saving the outputs
+            file_path = f"{root}\\{file_name[:-4]}_predictions.tsv"
+            df.to_csv(file_path, sep='\t', index=False)
