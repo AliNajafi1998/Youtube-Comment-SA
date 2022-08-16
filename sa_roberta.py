@@ -1,4 +1,4 @@
-# https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment?text=Like+I+care+about+you
+# https://huggingface.co/cardiffnlp/twitter-roberta-base-sentiment
 
 import pandas as pd
 import os
@@ -8,13 +8,12 @@ from transformers import AutoModelForSequenceClassification
 from transformers import AutoTokenizer
 import torch
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 # loading the tokenizer and model
 task = 'sentiment'
 MODEL = f"cardiffnlp/twitter-roberta-base-{task}"
 mapping_link = f"https://raw.githubusercontent.com/cardiffnlp/tweeteval/main/datasets/{task}/mapping.txt"
 
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 tokenizer = AutoTokenizer.from_pretrained(MODEL)
 model = AutoModelForSequenceClassification.from_pretrained(MODEL)
 model.to(device)
