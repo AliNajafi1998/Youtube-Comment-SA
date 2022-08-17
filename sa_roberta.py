@@ -41,7 +41,7 @@ def get_chunks(token_ids, window_size=510, stride=211):
         input_chunk_ids = torch.concat([input_chunk_ids, torch.IntTensor([END_TOKEN_ID])])
 
         # padding
-        padding_size = abs(window_size + 1 - len(input_chunk_ids))
+        padding_size = abs(window_size + 2 - len(input_chunk_ids))
         input_chunk_ids = torch.concat(
             [input_chunk_ids, torch.IntTensor([PAD_TOKEN_ID] * padding_size)])
         input_chunk_ids = torch.reshape(input_chunk_ids, [-1, 512])
@@ -76,6 +76,7 @@ for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
 
                 # softmax scores
                 batch_scores = torch.softmax(output[0], dim=-1)
+                batch_scores = torch.reshape(batch_scores, [-1, 3])
 
                 # mean probabilities
                 scores = torch.mean(batch_scores, dim=0)
