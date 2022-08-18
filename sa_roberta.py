@@ -24,7 +24,7 @@ END_TOKEN_ID = 2
 WINDOW_SIZE = 510
 STRIDE = 211
 
-for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
+for root, dirs, files in os.walk(os.getcwd() + "/data", topdown=False):
     for file_name in files:
 
         if file_name.endswith("_cleaned.tsv"):
@@ -35,13 +35,14 @@ for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
             df.reset_index(drop=True, inplace=True)
             comments = df['clean_comments'].tolist()
             predictions = []
+
             for c in tqdm(comments):
+
                 # encoding the texts
                 tokens = tokenizer.encode_plus(c, return_tensors='pt', add_special_tokens=False)
 
                 input_ids = tokens['input_ids'][0]
                 attention_mask = tokens['attention_mask'][0]
-
                 # windowing
                 total_length = len(input_ids)
                 flag = True
@@ -56,18 +57,17 @@ for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
 
                     # start token
                     input_chunk_ids = torch.concat([torch.IntTensor([START_TOKEN_ID]), input_ids[start:end]])
-                    attention_chunk_mask = torch.concat([torch.IntTensor([START_TOKEN_ID]), attention_mask[start:end]])
+                    attention_chunk_mask = torch.concat([torch.IntTensor([1]), attention_mask[start:end]])
 
                     # end token
                     input_chunk_ids = torch.concat([input_chunk_ids, torch.IntTensor([END_TOKEN_ID])])
-                    attention_chunk_mask = torch.concat([attention_chunk_mask, torch.IntTensor([END_TOKEN_ID])])
+                    attention_chunk_mask = torch.concat([attention_chunk_mask, torch.IntTensor([1])])
 
                     # padding
                     padding_size = abs(WINDOW_SIZE + 2 - len(input_chunk_ids))
                     input_chunk_ids = torch.concat([input_chunk_ids, torch.IntTensor([PAD_TOKEN_ID] * padding_size)])
 
-                    attention_chunk_mask = torch.concat(
-                        [attention_chunk_mask, torch.IntTensor([PAD_TOKEN_ID] * padding_size)])
+                    attention_chunk_mask = torch.concat([attention_chunk_mask, torch.IntTensor([0] * padding_size)])
 
                     input_chunk_ids = torch.reshape(input_chunk_ids, [-1, 512])
                     attention_chunk_mask = torch.reshape(attention_chunk_mask, [-1, 512])
@@ -83,10 +83,11 @@ for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
 
                     start = start + STRIDE
 
+                # stacking the probabilities
                 chunk_scores = torch.stack(chunk_scores)
 
                 # mean probabilities
-                final_scores = torch.stack(chunk_scores).mean(dim=0)
+                final_scores = chunk_scores.mean(dim=0)
 
                 # Labels: 0 -> Negative; 1 -> Neutral; 2 -> Positive
                 pred = torch.argmax(final_scores).item()
@@ -96,5 +97,5 @@ for root, dirs, files in os.walk(os.getcwd() + "\\data", topdown=False):
             df["predicted_label"] = predictions
 
             # saving the outputs
-            file_path = f"{root}\\{file_name[:-4]}_predictions.tsv"
+            file_path = f"{root}/{file_name[:-4]}_predictions.tsv"
             df.to_csv(file_path, sep='\t', index=False)
