@@ -22,7 +22,7 @@ def get_comments(video_id, max_page):
         if counter < max_page:
             if "nextPageToken" in video_response:
                 video_response = (
-                    youtube.commentThreads()
+                    youtube.commentThreads(pageToken=video_response["nextPageToken"])
                     .list(part="snippet,replies", videoId=video_id)
                     .execute()
                 )
